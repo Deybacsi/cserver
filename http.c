@@ -3,52 +3,68 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 #include "http.h"
 
-const int   PORT=8080;
-const int   MAXCONNS=10;
+// server main configuration 
+const int   PORT=8080;                              // listening port
+const int   MAXCONNS=10;                            // max no of connections
 
 
 int startServer() {
     fprintf(stdout, "Server starting on port %i...\n",PORT);
 
-    int listener,   // file descriptor for listening
-        req;       // resp fd
+    int listener,       // file descriptor for listening
+        request;        // resp fd
 
-    // to store address
-    struct sockaddr_in myAddr;
-    // clear the variable
-    bzero( &myAddr, sizeof(myAddr));
+    
+    struct sockaddr_in myAddr;                      // to store address
+    bzero( &myAddr, sizeof(myAddr));                // clear the variable
 
-    // addressing scheme IP
-    myAddr.sin_family = AF_INET;
-    // connect from any IP
-    myAddr.sin_addr.s_addr = htons(INADDR_ANY);
-    // listen on port
-    myAddr.sin_port = htons(PORT);
+    myAddr.sin_family = AF_INET;                    // addressing scheme IP
+    myAddr.sin_addr.s_addr = htons(INADDR_ANY);     // connect from any IP address
+    myAddr.sin_port = htons(PORT);                  // listen on port
 
-    // setup listener
-    listener = socket(AF_INET, SOCK_STREAM, 0);
-    // bindign listener
-    bind(listener, (struct sockaddr *) &myAddr, sizeof(myAddr));
-    // start listening on port
-    listen(listener, MAXCONNS);
+    
+    listener = socket(AF_INET, SOCK_STREAM, 0);     // setup listener
+    bind(listener, (struct sockaddr *) &myAddr, sizeof(myAddr));    // binding listener
+    listen(listener, MAXCONNS);                     // start listening on port
 
-    req = accept(listener, (struct sockaddr*) NULL, NULL);
-
+    
     char str[100];
+
+    int forkId=-1;
 
     while(1)
     {
- 
+        request = accept(listener, (struct sockaddr*) NULL, NULL);
+
+        forkId=fork();
+        switch (forkId) {
+
+            case 0:                                                 // if forking was successful, this will be the worker thread
+                fprintf(stdout, "Worker forked successfully\n");
+
+                exit(0);
+                break;
+            case -1:                                                // if something goes wrong print an error message
+                fprintf(stdout, "Can't fork new worker!\n");
+                break;
+            default:                                                // the main program will continue to listen for connections
+                fprintf(stdout, "Listening...\n");
+                break;
+        }
+
         bzero( str, 100);
  
-        read(req,str,100);
+        read(request,str,100);
  
-        printf("Echoing back - %s",str);
+        //printf("Received:\n %s",str);
  
-        write(req, str, strlen(str)+1);
+        write(request, str, strlen(str)+1);
  
     }
 }
+
