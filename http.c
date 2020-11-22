@@ -39,13 +39,8 @@ int startServer() {
     bind(listener_fd, (struct sockaddr *) &myAddr, sizeof(myAddr));    // binding listener
     listen(listener_fd, MAXCONNS);                     // start listening on port
 
-    
-    char str[100];
+    int forkId=-1;                                  
 
-    int forkId=-1;
-
-    char response[10000] = "";                                      // to store our response string
-    char responseLength[50] = "";                                   // to store response length in string
     while(1)
     {
         request_fd = accept(listener_fd, (struct sockaddr*) NULL, NULL);  // wait for incoming connections
@@ -55,26 +50,7 @@ int startServer() {
             case 0:                                                 // if forking was successful, this will be the new worker thread
                 fprintf(stdout, "Worker forked successfully\n");
 
-                bzero( str, 100);
-                read(request_fd,str,100);
-                fprintf(stdout, "Requested:\n%s", str);
-                char *a;
-                a="some response string";
-
-                strcat(response,HTTP_HEADERS[0]);
-                strcat(response, "Content-Length: ");
-                sprintf(responseLength, "%d", (int) strlen(a));
-                strcat(response, responseLength);
-                strcat(response, "\n");
-                strcat(response, a);
-                strcat(response, "\n");
-                strcat(response, "\n");
-
-                write(request_fd, response, strlen(response)+1);
-
-                fprintf(stdout, "Responded:\n%s",response);
-
-
+                sendResponse(request_fd);                           // send back a response
 
                 fprintf(stdout, "Worker exiting\n");
                 exit(0);
@@ -92,4 +68,31 @@ int startServer() {
     }
 }
 
- 
+
+void sendResponse(int request_fd) {
+    const int bufferLength=10000;                                   // request/response buffer size      
+    char requestString[bufferLength];                               // to store our request string
+    char responseString[bufferLength];                                    // to store our response string
+    char responseLength[50] = "";                                   // to store response length in string
+
+    bzero( requestString, bufferLength);
+    bzero( responseString, bufferLength);
+    read(request_fd,requestString,bufferLength);
+    fprintf(stdout, "Requested:\n%s", requestString);
+    char *a;
+    a="some response string";
+
+    strcat(responseString,HTTP_HEADERS[0]);
+    strcat(responseString, "Content-Length: ");
+    sprintf(responseLength, "%d", (int) strlen(a));
+    strcat(responseString, responseLength);
+    strcat(responseString, "\n");
+    strcat(responseString, a);
+    strcat(responseString, "\n");
+    strcat(responseString, "\n");
+
+    write(request_fd, responseString, strlen(responseString)+1);
+
+    fprintf(stdout, "Responded:\n%s",responseString);
+
+}
