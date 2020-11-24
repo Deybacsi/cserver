@@ -5,12 +5,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include "http.h"
 
 // server main configuration 
 const int   PORT=8080,                                              // listening port
             MAXCONNS=10;                                            // max no of connections
+
+const char *KEYSPACEDIR="./serverdb";                               // directory path for storing key-value pairs
 
 const char *HTTP_HEADERS[2] = {
             "HTTP/1.1 200 OK\n",
@@ -75,37 +79,60 @@ void sendResponse(int request_fd) {
     char requestString[bufferLength];                               // to store our request string
     char responseString[bufferLength];                              // to store our response string
     char responseLength[50] = "";                                   // to store response length in string
-    char *requestLine;
-    char *requestType;
-    char *key, *value, *bodyLine;
+    char *requestLine;                                              // temp variable for request parsing
+    char *requestType;                                              // request type: PUT/GET
+    char *bodyLine;                                                 // the key=value string from request
+    char *key, *value;                                              //      splitted into 2 vars
+    int keySpaceFile_fd;                                            // file descriptor for the keyspace files
+    char keySpaceFile_name[10000];                                  // path/filename that contains the key's value
 
     bzero(requestString, bufferLength);                             // cleaning buffers
     bzero(responseString, bufferLength);
+    bzero(keySpaceFile_name, 10000);
     if (read(request_fd, requestString, bufferLength) < 1 ) {       // try to read the request into request buffer
         fprintf(stdout, "Error while reading request, exiting.\n");
         return;
     }                  
     fprintf(stdout, "Requested:\n%s\n", requestString);
 
-    
+    bodyLine=""; key=""; value="";
     
     requestLine=strtok(requestString,"\n");                         // iterating through reqeust lines
     while (requestLine != NULL)
     {
         if(strchr(requestLine, '=') != NULL)                        // to find a key=value 
         {
-            bodyLine=requestLine;                                   // store it
+            bodyLine=requestLine;                                   // store this line for further use
         }
         requestLine = strtok (NULL, "\n");
     }
 
-    requestType=strtok(requestString," ");                          // get the request type: PUT/GET from the beginning of the string
+    requestType=strtok(requestString," ");                          // get the first word (request type: PUT/GET) from the beginning of the string
+    key=strtok(bodyLine,"=");                                       // get key from request body
+    value=strtok (NULL, "\n");                                      // and value
+
+    strcat(keySpaceFile_name, KEYSPACEDIR);
+    strcat(keySpaceFile_name, "/");
+    strcat(keySpaceFile_name, key);
+    
+    fprintf(stdout, "aaaaaaaaaaaaa:\n%s\n", keySpaceFile_name);
 
     if  (strcmp(requestType,"GET") == 0 )  {                        // GET  
 
         strcat(responseString, HTTP_HEADERS[0]); // HTTP 200 
     }
     else if  (strcmp(requestType,"PUT") == 0 )  {                   // PUT
+        keySpaceFile_fd=open(keySpaceFile_name, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR );
+        if (keySpaceFile_fd < 0) {                                  // if there are errors
+            if (errno == EEXIST) {                                  // if the file already exists
+
+            } else {                                                // something else went wrong
+                fprintf(stdout, "Error while creating file '%s', exiting.\n", keySpaceFile_name);
+                return;
+            }
+        } else {                                                    // if the file don't exists
+            write(keySpaceFile_fd, value, strlen(value));
+        }
         strcat(responseString, HTTP_HEADERS[0]); // HTTP 200 
     }
     else {                                                          // unknown request type
@@ -113,7 +140,7 @@ void sendResponse(int request_fd) {
         strcat(responseString, "ERROR: Call with PUT or GET requests only.\n\n");
         fprintf(stdout, "Bad request accepted, exiting.\n");
     }
-    fprintf(stdout, "\nRequest:%s %s\n",requestType,bodyLine);
+    fprintf(stdout, "\nParsed request:%s %s %s\n",requestType, key, value);
 
     char a[]="some response string";
     strcat(responseString, "Content-Length: ");                     // construct the response string      
