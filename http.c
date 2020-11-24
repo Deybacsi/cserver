@@ -13,13 +13,14 @@
 // server main configuration 
 const int   PORT=8080,                                              // listening port
             MAXCONNS=10,                                            // max no of connections
-            BUFFERLENGTH=10000;                                   // request/response buffer size  
+            BUFFERLENGTH=10000;                                     // buffer size for request/response and key value read
 
 const char *KEYSPACEDIR="./serverdb";                               // directory path for storing key-value pairs
 
-const char *HTTP_HEADERS[3] = {
+const char *HTTP_HEADERS[4] = {                                     // used in sendResponse()
             "HTTP/1.1 200 OK\n",
             "HTTP/1.1 400 Bad Request\n",
+            "HTTP/1.1 404 Not Found\n",
             "HTTP/1.1 500 Internal Server Error\n"
 };
 
@@ -49,16 +50,17 @@ int startServer() {
 
     while(1)
     {
+        fprintf(stdout, "Listening...\n");
         request_fd = accept(listener_fd, (struct sockaddr*) NULL, NULL);  // wait for incoming connections
 
         forkId=fork();                                              // if input received, try to fork a new instance
         switch (forkId) {
             case 0:                                                 // if forking was successful, this will be the new worker thread
-                fprintf(stdout, "Worker forked successfully\n");
+                fprintf(stdout, "--- Worker forked successfully\n");
 
-                checkRequest(request_fd);                           // send back a response
+                checkRequest(request_fd);                           // check the request and send back a response if possible
 
-                fprintf(stdout, "Worker exiting\n");
+                fprintf(stdout, "--- Worker exiting\n");
                 exit(0);
                 break;
 
@@ -76,73 +78,104 @@ int startServer() {
 
 void checkRequest(int request_fd) {
     char requestString[BUFFERLENGTH];                               // to store our request string
+    char valueString[BUFFERLENGTH];                                 // value read from database
     char *requestLine;                                              // temp variable for request parsing
     char *requestType;                                              // request type: PUT/GET
-    char *bodyLine;                                                 // the key=value string from request
-    char *key, *value;                                              //      splitted into 2 vars
-    int keySpaceFile_fd;                                            // file descriptor for the keyspace files
-    char keySpaceFile_name[10000];                                  // path/filename that contains the key's value
+    char *key, *value;                                              
+    int keySpaceFile_fd;                                            // file descriptor for the keyspace files R/W
+    char keySpaceFile_name[10000];                                  // path/filename what contains the key's value
 
     bzero(requestString, BUFFERLENGTH);                             // cleaning buffers
-    
+    bzero(valueString, BUFFERLENGTH);
     bzero(keySpaceFile_name, 10000);
     if (read(request_fd, requestString, BUFFERLENGTH) < 1 ) {       // try to read the request into request buffer
         fprintf(stdout, "Error while reading request, exiting.\n");
+        close(request_fd);
         return;
     }                  
-    fprintf(stdout, "Requested:\n%s\n", requestString);
+    // fprintf(stdout, "Requested:\n%s\n", requestString);
 
-    bodyLine=""; key=""; value="";
-    
-    requestLine=strtok(requestString,"\n");                         // iterating through reqeust lines
+    key=""; value="";
+
+    requestType=strtok(requestString," ");                          // get the first word (request type: PUT/GET) from the beginning of the string
+
+    requestLine=strtok(NULL,"\n");                                  // iterating through reqeust lines
     while (requestLine != NULL)
     {
-        if(strchr(requestLine, '=') != NULL)                        // to find a key=value 
-        {
-            bodyLine=requestLine;                                   // store this line for further use
+        if (strcmp(requestLine,"\r") == 0) {                        // strtok already stripped the \n from the \r\n  --> \r alone means it's an empty line)
+            key=strtok(NULL,"=\n");                                 // parse the next line (request body) until = or \n
+            value=strtok (NULL, "\n");
         }
         requestLine = strtok (NULL, "\n");
     }
 
-    requestType=strtok(requestString," ");                          // get the first word (request type: PUT/GET) from the beginning of the string
-    key=strtok(bodyLine,"=");                                       // get key from request body
-    value=strtok (NULL, "\n");                                      // and value
+    fprintf(stdout, "\nParsed request:%s %s %s\n",requestType, key, value); 
 
-    strcat(keySpaceFile_name, KEYSPACEDIR);
-    strcat(keySpaceFile_name, "/");
-    strcat(keySpaceFile_name, key);
-    
-    fprintf(stdout, "Filename:\n%s\n", keySpaceFile_name);
-
-    if  (strcmp(requestType,"GET") == 0 )  {                        // GET  
-
-        
+    if (key == NULL) {                                              // if there is no key in request body
+        sendResponse(request_fd, 400, "ERROR: Specify a key in request body");
+        fprintf(stdout, "No key specified, exiting.\n");
+        close(request_fd);
+        return;
     }
 
-    else if  (strcmp(requestType,"PUT") == 0 )  {                                                           // PUT
+    strcat(keySpaceFile_name, KEYSPACEDIR); strcat(keySpaceFile_name, "/"); strcat(keySpaceFile_name, key);     // create the keyspace filename
+    fprintf(stdout, "Filename: %s\n", keySpaceFile_name);
+
+    /*
+        GET request
+    */
+    if  (strcmp(requestType,"GET") == 0 )  {                                                                                                    
+
+        keySpaceFile_fd=open(keySpaceFile_name, O_RDONLY);                                                      // try to open file for read
+        if (keySpaceFile_fd < 0) {
+            sendResponse(request_fd, 404, "ERROR: Key doesn't exist in database");
+            fprintf(stdout, "Can't open file '%s', exiting.\n", keySpaceFile_name);
+        } else {                                                                                                // if OK, send back its content
+            read(keySpaceFile_fd, valueString, BUFFERLENGTH);
+            sendResponse(request_fd, 200, valueString);
+            fprintf(stdout, "Value: %s\n", valueString);
+        }
+        
+    }
+    /*
+        PUT request
+    */
+    else if  (strcmp(requestType,"PUT") == 0 )  {                                                           
+        
+        if (value == NULL) {
+            sendResponse(request_fd, 400, "ERROR: Specify a value for the key");
+            fprintf(stdout, "No key value specified, exiting.\n");
+            return;
+        }
+                                                          
         keySpaceFile_fd=open(keySpaceFile_name, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR );     // try to open the file for write,truncate it, if not exists then create, with RW permissions
         if (keySpaceFile_fd < 0) {                                                                              // if there are errors
-            if (errno == EEXIST) {                                                                          // if the file already exists
+            if (errno == EEXIST) {                                                                              // if the file already exists
                 keySpaceFile_fd=open(keySpaceFile_name, O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR );                // open it for write, truncate the file
-                write(keySpaceFile_fd, value, strlen(value));                                                   // write value
-                sendResponse(request_fd, 200, "SUCCESS: Key modified");                                         // send back http 200 & response
-            } else {                                                                                        // something else went wrong
+                write(keySpaceFile_fd, value, strlen(value));                                                   
+                sendResponse(request_fd, 200, "Key modified");                                                  
+            } else {                                                                                            // something else went wrong
                 sendResponse(request_fd, 500, "ERROR: Error while creating key file on server");
                 fprintf(stdout, "Error while creating file '%s', exiting.\n", keySpaceFile_name);
                 return;
             }
-        } else {                                                                                            // if the file doesn't exist -> create
-            write(keySpaceFile_fd, value, strlen(value));                                                       // write the value into it
-            sendResponse(request_fd, 200, "SUCCESS: Key added");                                                // send back http 200 & response
+        } else {                                                                                                // if the file doesn't exist -> create
+            write(keySpaceFile_fd, value, strlen(value));                                                       
+            sendResponse(request_fd, 200, "Key added");                                                         
         }
     }
 
-    else {                                                          // unknown request type
+    /*
+        UNKNOWN request
+    */
+    else {                                                                                                  
         sendResponse(request_fd, 400, "ERROR: Call with PUT or GET requests only.");
         fprintf(stdout, "Bad request accepted, exiting.\n");
     }
 
-    fprintf(stdout, "\nParsed request:%s %s %s\n",requestType, key, value);
+    close(request_fd);
+    close(keySpaceFile_fd);
+
 }
 
 void sendResponse(int request_fd, int statusCode, char* message) {
@@ -150,10 +183,11 @@ void sendResponse(int request_fd, int statusCode, char* message) {
     char responseLength[50] = "";                                   // to store response length as string
     bzero(responseString, BUFFERLENGTH);
 
-    switch (statusCode) {
-        case 200: strcat(responseString, HTTP_HEADERS[0]); break;   // HTTP 200 
-        case 400: strcat(responseString, HTTP_HEADERS[1]); break;   // HTTP 400
-        case 500: strcat(responseString, HTTP_HEADERS[2]); break;   // HTTP 500
+    switch (statusCode) {                                           // add HTTP status code to response header
+        case 200: strcat(responseString, HTTP_HEADERS[0]); break;   
+        case 400: strcat(responseString, HTTP_HEADERS[1]); break;   
+        case 404: strcat(responseString, HTTP_HEADERS[2]); break;   
+        case 500: strcat(responseString, HTTP_HEADERS[3]); break;   
     }       
 
     strcat(responseString, "Content-Length: ");                     // construct the response string      
@@ -163,7 +197,7 @@ void sendResponse(int request_fd, int statusCode, char* message) {
     strcat(responseString, message);
     strcat(responseString, "\n");
     strcat(responseString, "\n");
-    write(request_fd, responseString, strlen(responseString)+1);    // send back the response
+    write(request_fd, responseString, strlen(responseString)+1);    // send back the whole response string
 
-    fprintf(stdout, "\nResponded:\n%s",responseString);
+    // fprintf(stdout, "\nResponded:\n%s",responseString);
 }
