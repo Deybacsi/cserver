@@ -75,29 +75,45 @@ void sendResponse(int request_fd) {
     char requestString[bufferLength];                               // to store our request string
     char responseString[bufferLength];                              // to store our response string
     char responseLength[50] = "";                                   // to store response length in string
-    char *requestLines[2];
+    char *requestLine;
     char *requestType;
+    char *key, *value, *bodyLine;
 
     bzero(requestString, bufferLength);                             // cleaning buffers
     bzero(responseString, bufferLength);
-    read(request_fd, requestString, bufferLength);                  // read the request into request buffer
+    if (read(request_fd, requestString, bufferLength) < 1 ) {       // try to read the request into request buffer
+        fprintf(stdout, "Error while reading request, exiting.\n");
+        return;
+    }                  
     fprintf(stdout, "Requested:\n%s\n", requestString);
 
-    requestType=strtok(requestString," ");
+    
+    
+    requestLine=strtok(requestString,"\n");                         // iterating through reqeust lines
+    while (requestLine != NULL)
+    {
+        if(strchr(requestLine, '=') != NULL)                        // to find a key=value 
+        {
+            bodyLine=requestLine;                                   // store it
+        }
+        requestLine = strtok (NULL, "\n");
+    }
 
-    if  (strcmp(requestType,"GET") == 0 )  {
+    requestType=strtok(requestString," ");                          // get the request type: PUT/GET from the beginning of the string
+
+    if  (strcmp(requestType,"GET") == 0 )  {                        // GET  
 
         strcat(responseString, HTTP_HEADERS[0]); // HTTP 200 
     }
-    else if  (strcmp(requestType,"PUT") == 0 )  {
+    else if  (strcmp(requestType,"PUT") == 0 )  {                   // PUT
         strcat(responseString, HTTP_HEADERS[0]); // HTTP 200 
     }
-    else {
+    else {                                                          // unknown request type
         strcat(responseString, HTTP_HEADERS[1]); // HTTP 400
         strcat(responseString, "ERROR: Call with PUT or GET requests only.\n\n");
         fprintf(stdout, "Bad request accepted, exiting.\n");
     }
-    fprintf(stdout, "\nRequest type:%s\n",requestType);
+    fprintf(stdout, "\nRequest:%s %s\n",requestType,bodyLine);
 
     char a[]="some response string";
     strcat(responseString, "Content-Length: ");                     // construct the response string      
