@@ -1,37 +1,28 @@
-## Welcome to GitHub Pages
+The purpose of this project is to implement a simple key-value storage server in C, and a very basic Python client to check its functionalities.
 
-You can use the [editor on GitHub](https://github.com/Deybacsi/cserver/edit/master/docs/index.md) to maintain and preview the content for your website in Markdown files.
+## OS
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+Server and client both runs on Linux. (Tested on Ubuntu 18.04)
 
-### Markdown
+## The server
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+- Implemented in C
+- Contains a Makefile
+- Doesn't use any external libraries
+- Stores key-value pairs
+    
+    - Key and value are ASCII strings
+    - Key only can contain only numbers and letters
 
-```markdown
-Syntax highlighted code block
+- Responds to the following HTTP requests
 
-# Header 1
-## Header 2
-### Header 3
+    - PUT key value : stores a key in the database with provided value
+    - GET key : retrieve a previously stored value for key
 
-- Bulleted
-- List
+- Is able to serve multiple clients
+- Uses shared key-space between clients
 
-1. Numbered
-2. List
+## The client
 
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/Deybacsi/cserver/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+- Implemented in Python
+- Provides a basic command line interface to PUT/GET keys

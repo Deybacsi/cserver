@@ -129,9 +129,6 @@ void checkRequest(int request_fd) {
          }
     }
 
-
-    
-
     strcat(keySpaceFile_name, KEYSPACEDIR); strcat(keySpaceFile_name, "/"); strcat(keySpaceFile_name, key);     // create the keyspace filename
     fprintf(stdout, "Filename: %s\n", keySpaceFile_name);
 
@@ -166,6 +163,11 @@ void checkRequest(int request_fd) {
         if (keySpaceFile_fd < 0) {                                                                              // if there are errors
             if (errno == EEXIST) {                                                                              // if the file already exists
                 keySpaceFile_fd=open(keySpaceFile_name, O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR );                // open it for write, truncate the file
+                if (keySpaceFile_fd < 0) {                                                                      // if it cannot be opened
+                    sendResponse(request_fd, 500, "ERROR: Error while writing key file on server");
+                    fprintf(stdout, "Error while writing to file '%s', exiting.\n", keySpaceFile_name);
+                    return;     
+                }
                 write(keySpaceFile_fd, value, strlen(value));                                                   
                 sendResponse(request_fd, 200, "Key modified");                                                  
             } else {                                                                                            // something else went wrong

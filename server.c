@@ -3,6 +3,5 @@
 #include "http.h"
 
 int main() {
-
     startServer();
 }
