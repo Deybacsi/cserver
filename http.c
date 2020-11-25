@@ -50,7 +50,6 @@ int startServer() {
 
     while(1)
     {
-        fprintf(stdout, "Listening...\n");
         request_fd = accept(listener_fd, (struct sockaddr*) NULL, NULL);  // wait for incoming connections
 
         forkId=fork();                                              // if input received, try to fork a new instance
@@ -193,11 +192,9 @@ void sendResponse(int request_fd, int statusCode, char* message) {
     strcat(responseString, "Content-Length: ");                     // construct the response string      
     sprintf(responseLength, "%d", (int) strlen(message));
     strcat(responseString, responseLength);
-    strcat(responseString, "\n");
+    strcat(responseString, "\n\n");
     strcat(responseString, message);
-    strcat(responseString, "\n");
-    strcat(responseString, "\n");
-    write(request_fd, responseString, strlen(responseString)+1);    // send back the whole response string
+    write(request_fd, responseString, strlen(responseString));    // send back the whole response string
 
     // fprintf(stdout, "\nResponded:\n%s",responseString);
 }
