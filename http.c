@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "http.h"
 
@@ -103,7 +104,7 @@ void checkRequest(int request_fd) {
     {
         if (strcmp(requestLine,"\r") == 0) {                        // strtok already stripped the \n from the \r\n  --> \r alone means it's an empty line)
             key=strtok(NULL,"=\n");                                 // parse the next line (request body) until = or \n
-            value=strtok (NULL, "\n");
+            value=strtok (NULL, "\n");                              // it will be (null) or given value
         }
         requestLine = strtok (NULL, "\n");
     }
@@ -116,6 +117,20 @@ void checkRequest(int request_fd) {
         close(request_fd);
         return;
     }
+
+    char tempCh;                                                    // check for non-alphanumeric characters in keyname
+    for (int i =0; i < strlen(key); i++) {
+        tempCh = key[i];
+         if (!isalnum(tempCh)) {                                    // if it's non AN
+            sendResponse(request_fd, 400, "ERROR: Only alphanumeric characters are allowed as keyname!");
+            fprintf(stdout, "Invalid keyname, exiting.\n");
+            close(request_fd);
+            return;
+         }
+    }
+
+
+    
 
     strcat(keySpaceFile_name, KEYSPACEDIR); strcat(keySpaceFile_name, "/"); strcat(keySpaceFile_name, key);     // create the keyspace filename
     fprintf(stdout, "Filename: %s\n", keySpaceFile_name);
@@ -189,12 +204,14 @@ void sendResponse(int request_fd, int statusCode, char* message) {
         case 500: strcat(responseString, HTTP_HEADERS[3]); break;   
     }       
 
-    strcat(responseString, "Content-Length: ");                     // construct the response string      
+
+    strcat(responseString, "Connection: close\n");                  // construct the response string 
+    strcat(responseString, "Content-Length: ");                          
     sprintf(responseLength, "%d", (int) strlen(message));
     strcat(responseString, responseLength);
     strcat(responseString, "\n\n");
     strcat(responseString, message);
-    write(request_fd, responseString, strlen(responseString));    // send back the whole response string
+    write(request_fd, responseString, strlen(responseString));      // send back the whole response string
 
     // fprintf(stdout, "\nResponded:\n%s",responseString);
 }
