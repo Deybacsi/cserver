@@ -12,11 +12,11 @@ Server and client both runs on Linux. (Tested on Ubuntu 18.04)
 - Stores key-value pairs
     
     - Key and value are ASCII strings
-    - Key only can contain only numbers and letters
+    - Key can contain just numbers and letters
 
 - Responds to the following HTTP requests
 
-    - PUT key value : stores a key in the database with provided value
+    - PUT key value : stores a key in the database with the given value
     - GET key : retrieve a previously stored value for key
 
 - Is able to serve multiple clients
