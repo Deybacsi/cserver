@@ -2,7 +2,7 @@
 
 One of the main purposes of this project is to demonstrare C language, its possibilities, and its usage.
 
-Because of this, the project was separated to multiple source code files to demonstrate:
+Because of this, the project was separated into multiple source code files to demonstrate:
 - the use of header files
 - the use of gcc compiler
 - the use of make and Makefiles
@@ -67,12 +67,12 @@ The response is as simple as possible (1 line string), but JSON or XML output ca
 The code tries to handle the following issues:
 
 - the main program can't fork a new worker
-- client disconnect unintentionally while sending request
+- client disconnects unintentionally while sending request
 - no key is given in request body
 - key name contains non-alphanumerical characters
 - GET requests
 
-    - key doesn't exists in the storage
+    - key doesn't exist in the storage
 - PUT requests
 
     - no value was specified to store 
@@ -85,8 +85,6 @@ The code tries to handle the following issues:
 Except of the first 2 cases, every error both sends
 - a HTTP response message to the client (HTTP 400, 404, 500, the response body starts with "ERROR:")
 - a message to stdout, as a possibility for server-side logging
-
-
 
 
 

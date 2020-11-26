@@ -99,7 +99,7 @@ void checkRequest(int request_fd) {
 
     requestType=strtok(requestString," ");                          // get the first word (request type: PUT/GET) from the beginning of the string
 
-    requestLine=strtok(NULL,"\n");                                  // iterating through reqeust lines
+    requestLine=strtok(NULL,"\n");                                  // iterating through request lines
     while (requestLine != NULL)
     {
         if (strcmp(requestLine,"\r") == 0) {                        // strtok already stripped the \n from the \r\n  --> \r alone means it's an empty line)
@@ -162,8 +162,8 @@ void checkRequest(int request_fd) {
         keySpaceFile_fd=open(keySpaceFile_name, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR );     // try to open the file for write,truncate it, if not exists then create, with RW permissions
         if (keySpaceFile_fd < 0) {                                                                              // if there are errors
             if (errno == EEXIST) {                                                                              // if the file already exists
-                keySpaceFile_fd=open(keySpaceFile_name, O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR );                // open it for write, truncate the file
-                if (keySpaceFile_fd < 0) {                                                                      // if it cannot be opened
+                keySpaceFile_fd=open(keySpaceFile_name, O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR );                    // open it for write, truncate the file
+                if (keySpaceFile_fd < 0) {                                                                          // if it cannot be opened
                     sendResponse(request_fd, 500, "ERROR: Error while writing key file on server");
                     fprintf(stdout, "Error while writing to file '%s', exiting.\n", keySpaceFile_name);
                     return;     

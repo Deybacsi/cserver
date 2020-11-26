@@ -1,5 +1,5 @@
 
-// starts the server on the specified port in http.c
+// starts the server on the specified port (in http.c)
 int startServer();
 
 // called, when a request is incoming

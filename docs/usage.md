@@ -29,7 +29,7 @@ Read a key:
 myvalue
 ```
 
-If any error occured, the server responds back with a HTTP 400/404/500 header, and with the description of the problem.
+If an error occurs, the server responds back with a HTTP 400/404/500 header, and with the description of the problem.
 
 ```
 > curl -X GET -d mykey2 127.0.0.1:8080

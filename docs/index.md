@@ -2,7 +2,7 @@ The purpose of this project is to implement a simple key-value storage server in
 
 ## OS
 
-Server and client both runs on Linux. (Tested on Ubuntu 18.04)
+Server and client both run on Linux. (Tested on Ubuntu 18.04)
 
 ## The server
 
@@ -12,7 +12,7 @@ Server and client both runs on Linux. (Tested on Ubuntu 18.04)
 - Stores key-value pairs
     
     - Key and value are ASCII strings
-    - Key can contain just numbers and letters
+    - Key can contain only numbers and letters
 
 - Responds to the following HTTP requests
 
