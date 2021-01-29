@@ -51,7 +51,8 @@ myvalue
 
 ### Modifying a key
 
-```curl -v -X PUT -d mykey=myvalue 127.0.0.1:8080/
+```
+curl -v -X PUT -d mykey=myvalue 127.0.0.1:8080/
 *   Trying 127.0.0.1...
 * TCP_NODELAY set
 * Connected to 127.0.0.1 (127.0.0.1) port 8080 (#0)
